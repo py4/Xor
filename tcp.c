@@ -1,5 +1,24 @@
 #include "tcp.h"
 
+int create_connector_socket(char* host, int port) {
+  int sockfd = socket(PF_INET, SOCK_STREAM, 0);
+  if(sockfd < 0) {
+    perror("socket");
+    exit(EXIT_FAILURE);
+  }
+
+  struct sockaddr_in addr;
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = inet_addr(host);
+  addr.sin_port = htons(port);
+
+  if(connect(sockfd,(struct sockaddr *)&addr, sizeof(addr)) < 0) {
+    perror("connect");
+    exit(EXIT_FAILURE);
+  }
+  return sockfd;
+}
+
 int create_socket(int port) {
   int new_socket;
   struct sockaddr_in addr;
@@ -68,26 +87,31 @@ void sample_read_callback(int fd, fd_set* active_fd_set) {
   memset(buffer,0,sizeof(buffer));
 }
 
-void sample_callback(int main_fd, fd_set* active_fd_set, fd_set* read_fd_set) {
-  for(int i = 0; i < FD_SETSIZE; i++) {
-    if(FD_ISSET(i, read_fd_set)) {
-      if(i == main_fd)
-	sample_req_callback(i, active_fd_set);
-      else
-	sample_read_callback(i, active_fd_set);
-      
-    }
-  }
+void read_from_stdin() {
+  char buffer[1000];
+  memset(buffer, 0, sizeof(buffer));
+  read(STDIN_FILENO, buffer, sizeof(buffer));
+  printf("stdin:  %s\n",buffer);
 }
 
   
-int start_server(int port, socket_callback callback) {
-  fd_set active_fd_set, read_fd_set;
-  int main_socket = create_socket(port);
-  listen_on(main_socket,10);
-  FD_ZERO(&active_fd_set);
-  FD_SET(main_socket, &active_fd_set);
 
+
+void monitor(struct SockCont container, callback events_callback) {
+
+  fd_set active_fd_set, read_fd_set;
+  int stdin_fd = container.stdin_fd;
+  int server_fd = container.server_fd;
+  int listener_fd = container.listener_fd;
+  
+  FD_ZERO(&active_fd_set);
+  if(stdin_fd != -1)
+    FD_SET(stdin_fd, &active_fd_set);
+  if(server_fd != -1)
+    FD_SET(server_fd, &active_fd_set);
+  if(listener_fd != -1)
+    FD_SET(listener_fd, &active_fd_set);
+  
   while(1) {
     read_fd_set = active_fd_set;
     printf("Waiting for something...\n");
@@ -95,7 +119,9 @@ int start_server(int port, socket_callback callback) {
       perror("select");
       exit(EXIT_FAILURE);
     }
-    callback(main_socket, &active_fd_set, &read_fd_set);
-  }
+    for(int i = 0; i < FD_SETSIZE; i++) {
+      if(FD_ISSET(i, &read_fd_set))
+	events_callback(i, &active_fd_set, container);
+    }
+  }  
 }
-
