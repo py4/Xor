@@ -94,6 +94,12 @@ void read_from_stdin() {
   printf("stdin:  %s\n",buffer);
 }
 
+void write_msg(int fd, char* msg) {
+  int nbytes = write(fd, msg, sizeof(msg));
+  if(nbytes < 0)
+    perror("write");
+}
+
   
 
 

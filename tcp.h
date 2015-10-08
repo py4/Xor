@@ -15,11 +15,11 @@
 
 #define MAXMSG 512
 
-struct SockCont {
+typedef struct SockCont {
   int stdin_fd;
   int server_fd;
   int listener_fd;
-};
+} SockCont;
 
 //typedef void (*socket_callback)(int, fd_set*, fd_set*);
 typedef void(*callback)(int, fd_set*, struct SockCont);
@@ -40,6 +40,6 @@ void monitor(struct SockCont, callback);
 
 int create_connector_socket(char*,int);
 void read_from_stdin();
-
+void write_msg(int, char*);
 
 #endif

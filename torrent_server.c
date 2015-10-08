@@ -9,8 +9,7 @@ void ts_client_callback(int fd, fd_set* active_fd_set) {
 }
 
 void ts_event_callback(int fd, fd_set* active_fd_set, struct SockCont cont) {
-  printf("[TORRENT SERVER CALLBACK]\n");
-
+  printf("[ts] triggered fd: %d\n", fd);
   if(fd == cont.listener_fd)
     ts_listener_callback(fd, active_fd_set);
   else {
