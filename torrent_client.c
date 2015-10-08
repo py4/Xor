@@ -19,16 +19,12 @@ void tc_client_callback(int fd, fd_set* active_fd_set) {
 void tc_event_callback(int fd, fd_set* active_fd_set, struct SockCont cont) {
 
   printf("[TORRENT CLIENT CALLBACK]\n");
-  static struct SockCont my_cont;
-  my_cont.stdin_fd = cont.stdin_fd;
-  my_cont.server_fd = cont.server_fd;
-  my_cont.listener_fd = cont.listener_fd;
   
-  if(fd == my_cont.stdin_fd)
+  if(fd == cont.stdin_fd)
     tc_stdin_callback(fd, active_fd_set);
-  if(fd == my_cont.server_fd)
+  if(fd == cont.server_fd)
     tc_server_callback(fd, active_fd_set);
-  if(fd == my_cont.listener_fd)
+  if(fd == cont.listener_fd)
     tc_listener_callback(fd, active_fd_set);
   else {
     printf("a client has sent sth!\n");
