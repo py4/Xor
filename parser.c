@@ -26,3 +26,8 @@ void extract_filename(char* buffer, char* file_name) {
 
   printf("after:  %s\n", file_name);
 }
+
+void int_to_char(int num, char* buf) {
+  memset(buf, '\0', sizeof(buf));
+  snprintf(buf, sizeof(buf), "%d", num);
+}

@@ -25,11 +25,15 @@ void tc_listener_callback(int fd, fd_set* active_fd_set, struct SockCont cont) {
 }
 
 void tc_server_callback(int fd, fd_set* active_fd_set, struct SockCont cont) {
-  sample_read_callback(fd, active_fd_set);
+  char buffer[MAXMSG];
+  sample_read_callback(fd, active_fd_set, buffer);
+  printf("[tc] server told me: %s\n", buffer);
 }
 
 void tc_client_callback(int fd, fd_set* active_fd_set, struct SockCont cont) {
-  sample_read_callback(fd, active_fd_set);
+  char buffer[MAXMSG];
+  sample_read_callback(fd, active_fd_set, buffer);
+  printf("[tc] another client told me: %s\n", buffer);
 }
 
 void tc_event_callback(int fd, fd_set* active_fd_set, struct SockCont cont) {
@@ -48,11 +52,21 @@ void tc_event_callback(int fd, fd_set* active_fd_set, struct SockCont cont) {
   }
 }
 
+void send_lport_to_ts(int fd, int port) {
+  char buffer[1000];
+  int_to_char(port, buffer);
+  write_msg(fd, buffer);
+}
+
 void start_tc(int my_port, char* server_ip, int server_port) {
   int listener_fd = create_socket(my_port);
   listen_on(listener_fd,10);
   int server_fd = create_connector_socket(server_ip, server_port);
-
+  send_lport_to_ts(server_fd, my_port);
+  
+  printf("[tc] connected to the server\n");
+  printf("[tc] sent my port. \n");
+  
   struct SockCont init;
   init.stdin_fd = STDIN_FILENO;
   init.server_fd = server_fd;

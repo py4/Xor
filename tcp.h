@@ -31,8 +31,8 @@ void listen_on(int,int);
 
 /* samples */
 //void sample_callback(int, fd_set*, fd_set*);
-void sample_req_callback(int, fd_set*);
-void sample_read_callback(int, fd_set*);
+int sample_req_callback(int, fd_set*);
+int sample_read_callback(int, fd_set*, char*);
 void sample_stdin_res_handler(int);
 
 //void monitor(int,callback,int,callback,int,callback,callback);

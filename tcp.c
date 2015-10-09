@@ -63,28 +63,31 @@ void listen_on(int fd, int queue_size) {
   }
 }
 
-void sample_req_callback(int fd, fd_set* active_fd_set) {
+int sample_req_callback(int fd, fd_set* active_fd_set) {
   struct sockaddr_in client_sockaddr;
   int size = sizeof(client_sockaddr);
   int new_socket = accept(fd, (struct sockaddr*)&client_sockaddr, &size);
   if(new_socket < 0) {
     perror("accept");
-    return;
+    return -1;
   }
   fprintf(stderr, "Server: connect from host %s, port %hd. \n", inet_ntoa(client_sockaddr.sin_addr), ntohs(client_sockaddr.sin_port));
   FD_SET(new_socket, active_fd_set);
+  return new_socket;
 }
 
-void sample_read_callback(int fd, fd_set* active_fd_set) {
-  char buffer[MAXMSG];
+int sample_read_callback(int fd, fd_set* active_fd_set, char* buffer) {
+  //char buffer[MAXMSG];
   if(read_from_socket(fd, buffer) < 0) {
     printf("FUCK!\n");
     close(fd);
     FD_CLR(fd, active_fd_set);
-  } else
-    fprintf(stderr, "Server: got message: %s\n", buffer);
-
-  memset(buffer,0,sizeof(buffer));
+    return -1;
+  }
+  return 0;
+  //else
+    //fprintf(stderr, "Server: got message: %s\n", buffer);
+  //memset(buffer,0,sizeof(buffer));
 }
 
 void read_from_stdin() {
