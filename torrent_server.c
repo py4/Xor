@@ -179,6 +179,8 @@ void ts_event_callback(int fd, fd_set* active_fd_set, struct SockCont cont) {
   }
 }
 
+//TODO: adding exit flag to monitor and then clearing server DB
+
 void start_ts(int port) {
   int listener_fd = create_socket(port);
   listen_on(listener_fd,10);

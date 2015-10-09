@@ -74,3 +74,29 @@ void start_tc(int my_port, char* server_ip, int server_port) {
 
   monitor(init, tc_event_callback);
 }
+
+void init_tc_db(FileDB* db) {
+  memset(db->entries, 0, sizeof(Entry));
+  db->num_of_entries = 0;
+}
+
+void add_to_db(FileDB* db, char* path, char* name) {
+  Entry* entry = malloc(sizeof(Entry));
+  strcpy(entry->path, path);
+  strcpy(entry->name, name);
+  db->entries[db->num_of_entries++] = entry;
+}
+
+void clear_db(FileDB* db) {
+  for(int i = 0; i < db->num_of_entries; i++)
+    free(db->entries[i]);
+}
+
+void get_entry_path(FileDB* db, char* name, char* path) {
+  memset(path,0,sizeof(path));
+  for(int i = 0; i < db->num_of_entries; i++)
+    if(strcmp(db->entries[i]->name,name) == 0) {
+      strcpy(path, db->entries[i]->path);
+      return;
+    }
+}
