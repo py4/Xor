@@ -1,8 +1,8 @@
 #include "torrent_server.h"
 
 void init_db(TorrentDB* db) {
-  memset(db->connected_clients, 0, sizeof(connected_clients));
-  memset(db->file_entries, 0, sizeof(file_entries));
+  memset(db->connected_clients, 0, sizeof(db->connected_clients));
+  memset(db->file_entries, 0, sizeof(db->file_entries));
   db->num_of_connected = 0;
   db->num_of_entries = 0;
 }
@@ -18,10 +18,10 @@ void init_connected_client(ConnectedClient* client, char* ip, int port, int fd) 
 void init_file_entry(FileEntry* entry, char* name, ConnectedClient* client) {
   strcpy(entry->name, name);
   memset(entry->owners, 0, sizeof(entry->owners));
-  entry->last_owner = 0;
+  entry->last_who_gave = -1;
   entry->num_of_owners = 1;
   entry->owners[0] = client;
-  client->owned_files[num_of_files++] = entry;
+  client->owned_files[client->num_of_files++] = entry;
 }
 
 
@@ -45,14 +45,14 @@ FileEntry* find_file_entry(TorrentDB* db, char* name) {
   return 0;
 }
 
-void add_client(TorrentDB* db, const char* ip, int port, int fd) {
+void add_client(TorrentDB* db, char* ip, int port, int fd) {
   ConnectedClient* client = malloc(sizeof(client));
-  init_connected_client(client,ip,port,fd)
+  init_connected_client(client,ip,port,fd);
   db->connected_clients[db->num_of_connected++] = client;
 }
 
 void add_entry(TorrentDB* db, char* name, int fd) {
-  ConnectedClient* client = get_connected_client(db, fd);
+  ConnectedClient* client = find_connected_client(db, fd);
   if(client == 0) {
     printf("[ts] client not found \n");
     return;
@@ -63,9 +63,9 @@ void add_entry(TorrentDB* db, char* name, int fd) {
     init_file_entry(entry, name, client);
   } else {
     entry->owners[entry->num_of_owners++] = client;
-    client->owned_files[num_of_files++] = entry;
+    client->owned_files[client->num_of_files++] = entry;
   }
-  db->file_entries[num_of_entries++] = entry;
+  db->file_entries[db->num_of_entries++] = entry;
   return;
 }
 
@@ -76,21 +76,24 @@ void remove_client_from_entry(FileEntry* entry, ConnectedClient* client) {
 	entry->owners[j] = entry->owners[j+1];
       entry->owners[entry->num_of_owners - 1] = 0;
       entry->num_of_owners--;
-      if(entry->last_owner >= i)
-	entry->last_owner--;
+      if(entry->last_who_gave >= i)
+	entry->last_who_gave--;
+      return;
     }
   }
 }
 
-// no client is left this file
+// no client is left for this file
 void remove_entry_from_db(TorrentDB* db, FileEntry* entry) {
   for(int i = 0; i < db->num_of_entries; i++)
     if(db->file_entries[i] == entry) {
-      for(int j = i; j < db->num_of_entries; j++)
+      for(int j = i; j < db->num_of_entries - 1; j++)
 	db->file_entries[j] = db->file_entries[j+1];
       db->file_entries[db->num_of_entries-1] = 0;
+      db->num_of_entries--;
+      free(entry);
+      return;
     }
-  free(entry);
 }
 
 // in case of disconnecting
@@ -98,11 +101,39 @@ void remove_client(TorrentDB* db, int fd) {
   ConnectedClient* client = find_connected_client(db,fd);
   if(client == 0)
     return;
+
+  //removing from entries
   for(int i = 0; i < client->num_of_files; i++) {
     remove_client_from_entry(client->owned_files[i], client);
     if(client->owned_files[i]->num_of_owners == 0)
       remove_entry_from_db(db, client->owned_files[i]);
   }
+
+  //removing form db
+  for(int i = 0; i < db->num_of_connected; i++)
+    if(db->connected_clients[i] == client) {
+      for(int j = i; j < db->num_of_connected - 1; j++)
+	db->connected_clients[j] = db->connected_clients[j+1];
+      db->connected_clients[db->num_of_connected-1] = 0;
+
+      db->num_of_connected--;
+      free(client);
+      return;
+    }
+}
+
+ConnectedClient* get_current_seeder(FileEntry* entry) {
+  entry->last_who_gave++;
+  if(entry->last_who_gave == entry->num_of_owners)
+    entry->last_who_gave = 0;
+  return entry->owners[entry->last_who_gave];
+}
+
+ConnectedClient* get_a_seeder(TorrentDB* db, char* name) {
+  FileEntry* entry = find_file_entry(db,name);
+  if(entry == 0)
+    return 0;
+  return get_current_seeder(entry);
 }
 
 
