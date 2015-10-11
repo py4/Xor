@@ -1,5 +1,15 @@
 #include "torrent_server.h"
 
+void dump_db(TorrentDB* db) {
+  printf("==========================================\n");
+  for(int i = 0; i < db->num_of_connected; i++) {
+    printf("user with fd %d \n", db->connected_clients[i]->fd);
+    for(int j = 0; j < db->connected_clients[i]->num_of_files; j++)
+      printf("name: %s\n", db->connected_clients[i]->owned_files[j]->name);
+    printf("-----------------------\n");
+  }
+  printf("===========================================\n");
+}
 void init_db(TorrentDB* db) {
   memset(db->connected_clients, 0, sizeof(db->connected_clients));
   memset(db->file_entries, 0, sizeof(db->file_entries));
@@ -9,6 +19,7 @@ void init_db(TorrentDB* db) {
 
 void init_connected_client(ConnectedClient* client, char* ip, int port, int fd) {
   client->fd = fd;
+  memset(client->ip, '\0', sizeof(client->ip));
   strcpy(client->ip, ip);
   client->port = port;
   memset(client->owned_files,0,sizeof(client->owned_files));
@@ -16,6 +27,7 @@ void init_connected_client(ConnectedClient* client, char* ip, int port, int fd) 
 }
 
 void init_file_entry(FileEntry* entry, char* name, ConnectedClient* client) {
+  memset(entry->name, '\0', sizeof(entry->name));
   strcpy(entry->name, name);
   memset(entry->owners, 0, sizeof(entry->owners));
   entry->last_who_gave = -1;
@@ -46,9 +58,10 @@ FileEntry* find_file_entry(TorrentDB* db, char* name) {
 }
 
 void add_client(TorrentDB* db, char* ip, int port, int fd) {
-  ConnectedClient* client = malloc(sizeof(client));
+  ConnectedClient* client = malloc(sizeof(ConnectedClient));
   init_connected_client(client,ip,port,fd);
-  db->connected_clients[db->num_of_connected++] = client;
+  db->connected_clients[db->num_of_connected] = client;
+  db->num_of_connected++;
 }
 
 void add_entry(TorrentDB* db, char* name, int fd) {
@@ -147,40 +160,80 @@ int read_client_port(int fd, fd_set* active_fd_set) {
 }
 
 //TODO: droping client with bad port
-void ts_listener_callback(int fd, fd_set* active_fd_set) {
-  int new_socket = sample_req_callback(fd, active_fd_set);
+void ts_listener_callback(int fd, fd_set* active_fd_set, TorrentDB* db) {
+  char ip[MAXMSG];
+  int new_socket = sample_req_callback(fd, active_fd_set, ip);
   if(new_socket > 0) {
     printf("[ts] waiting for client port to be declared\n");
     int port = read_client_port(new_socket, active_fd_set);
-    printf("[ts] declared port: %d\n", port);
+    printf("[ts] received port: %d\n", port);
+    add_client(db, ip, port, new_socket);
+    printf("[ts] added client: %s - listen port: %d - fd: %d \n", ip, port, new_socket);
+    printf("[ts] now connected: %d\n", db->num_of_connected);
+  } else
+    printf("[ts][error] in accepting request\n");
+  return;
+}
+
+void ts_register_file(int fd, char* buffer, TorrentDB* db) {
+  char name[100];
+  extract_filename(buffer, name);
+  printf("[ts] registering: %s\n", name);
+  add_entry(db, name, fd);
+  printf("[ts] now entry count: %d\n", db->num_of_entries);
+}
+void ts_client_callback(int fd, fd_set* active_fd_set, TorrentDB* db) {
+  char buffer[MAXMSG];
+  int read_status = sample_read_callback(fd, active_fd_set, buffer);
+  if(read_status < 0) {
+    printf("[ts] error in read \n");
+    return;
+  } else {
+    printf("[ts] >>>>>>> read: %s\n", buffer);
+  }
+  
+  char command[100];
+  extract_command(buffer, command);
+  printf("[ts] command:  %s\n", command);
+  if(strcmp(command,"register") == 0)
+    ts_register_file(fd, buffer, db);
+  else {
+    printf("[ts] command not found \n");
   }
 }
 
-
-
-void ts_client_callback(int fd, fd_set* active_fd_set) {
-
+void ts_stdin_callback(int fd, fd_set* active_fd_set, TorrentDB* db) {
   char buffer[MAXMSG];
-  sample_read_callback(fd, active_fd_set, buffer);
-  printf("[ts] client told me: %s\n", buffer);
+  read_from_stdin(buffer, MAXMSG*sizeof(char));
+  char command[MAXMSG];
+  extract_command(buffer, command);
+  if(strcmp(command, "debug") == 0) {
+    dump_db(db);
+  }
 }
 
 void ts_event_callback(int fd, fd_set* active_fd_set, struct SockCont cont) {
+
+  static TorrentDB db = {{},{},0,0,0};
+  if(db.init == 0) {
+    printf("[ts] >>>>>>>>>> INIT <<<<<<<<<< \n");
+    init_db(&db);
+    db.init = 1;
+  }
+  
   printf("[ts] triggered fd: %d\n", fd);
-
   if(fd == cont.listener_fd) {
-
-    
-    ts_listener_callback(fd, active_fd_set);
+    ts_listener_callback(fd, active_fd_set, &db);
+  } else if(fd == cont.stdin_fd) {
+    ts_stdin_callback(fd, active_fd_set, &db);
   }
   else {
     printf("[ts] a client has sent sth!\n");
-    ts_client_callback(fd, active_fd_set);
+    ts_client_callback(fd, active_fd_set, &db);
   }
 }
 
-//TODO: adding exit flag to monitor and then clearing server DB
-
+//TODO: adding exit flag to monitor
 void start_ts(int port) {
   int listener_fd = create_socket(port);
   listen_on(listener_fd,10);
@@ -188,7 +241,7 @@ void start_ts(int port) {
   struct SockCont init;
   init.listener_fd = listener_fd;
   init.server_fd = -1;
-  init.stdin_fd = -1;
+  init.stdin_fd = STDIN_FILENO;
 
   monitor(init, ts_event_callback);
 }

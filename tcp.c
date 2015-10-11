@@ -1,5 +1,5 @@
 #include "tcp.h"
-
+#include <sys/ioctl.h>
 int create_connector_socket(char* host, int port) {
   int sockfd = socket(PF_INET, SOCK_STREAM, 0);
   if(sockfd < 0) {
@@ -41,9 +41,13 @@ int create_socket(int port) {
 }
 
 int read_from_socket(int fd, char* buffer) {
-  memset(buffer,0,sizeof(buffer));
+  //memset(buffer,0,buffer_size * sizeof(char));
   int nbytes;
 
+  /*  int fuck;
+  ioctl(fd, FIONREAD, &fuck);
+  printf("$$$$ fuck ready: %d\n", fuck); */
+  
   nbytes = read(fd,buffer,MAXMSG);
   if(nbytes < 0) {
     perror("read");
@@ -51,6 +55,7 @@ int read_from_socket(int fd, char* buffer) {
   } else if(nbytes == 0) {
     return -1;
   } else {
+    buffer[nbytes] = '\0';
     //fprintf(stderr, "Server: got message: %s\n", buffer);
     return 0;
   }
@@ -63,7 +68,7 @@ void listen_on(int fd, int queue_size) {
   }
 }
 
-int sample_req_callback(int fd, fd_set* active_fd_set) {
+int sample_req_callback(int fd, fd_set* active_fd_set, char* ip) {
   struct sockaddr_in client_sockaddr;
   int size = sizeof(client_sockaddr);
   int new_socket = accept(fd, (struct sockaddr*)&client_sockaddr, &size);
@@ -71,36 +76,51 @@ int sample_req_callback(int fd, fd_set* active_fd_set) {
     perror("accept");
     return -1;
   }
-  fprintf(stderr, "Server: connect from host %s, port %hd. \n", inet_ntoa(client_sockaddr.sin_addr), ntohs(client_sockaddr.sin_port));
+  strcpy(ip, inet_ntoa(client_sockaddr.sin_addr));
+  int port = client_sockaddr.sin_port;
+
+  fprintf(stderr, "[ts] new connection: %s : %d \n", ip, port);
+  //  fprintf(stderr, "Server: connect from host %s, port %hd. \n", inet_ntoa(client_sockaddr.sin_addr), ntohs(client_sockaddr.sin_port));
   FD_SET(new_socket, active_fd_set);
   return new_socket;
 }
 
 int sample_read_callback(int fd, fd_set* active_fd_set, char* buffer) {
   //char buffer[MAXMSG];
+  //memset(buffer,0,sizeof(buffer));
+  
   if(read_from_socket(fd, buffer) < 0) {
     printf("FUCK!\n");
     close(fd);
     FD_CLR(fd, active_fd_set);
     return -1;
   }
+  sanitize_buffer(buffer);
   return 0;
   //else
     //fprintf(stderr, "Server: got message: %s\n", buffer);
   //memset(buffer,0,sizeof(buffer));
 }
 
-void read_from_stdin() {
+/*void read_from_stdin() {
   char buffer[1000];
-  memset(buffer, 0, sizeof(buffer));
-  read(STDIN_FILENO, buffer, sizeof(buffer));
+  read(STDIN_FILENO, buffer, sizeof(1000));
   printf("stdin:  %s\n",buffer);
+  }*/
+
+void read_from_stdin(char* buffer, int size) {
+  memset(buffer, '\0', size);
+  read(STDIN_FILENO, buffer, size);
+  buffer[strlen(buffer)-1] = '\0';
 }
 
 void write_msg(int fd, char* msg) {
-  int nbytes = write(fd, msg, sizeof(msg));
+  printf("### fucking strlen: %d\n", strlen(msg));
+  int nbytes = write(fd, msg, strlen(msg)*sizeof(char));
   if(nbytes < 0)
     perror("write");
+  else
+    printf("### wrote %d bytes\n", nbytes);
 }
 
   

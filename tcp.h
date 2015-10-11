@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
+#include "parser.h"
 
 #define MAXMSG 512
 
@@ -31,7 +32,7 @@ void listen_on(int,int);
 
 /* samples */
 //void sample_callback(int, fd_set*, fd_set*);
-int sample_req_callback(int, fd_set*);
+int sample_req_callback(int, fd_set*, char*);
 int sample_read_callback(int, fd_set*, char*);
 void sample_stdin_res_handler(int);
 

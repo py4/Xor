@@ -1,27 +1,39 @@
 #include "torrent_client.h"
 #include "parser.h"
 
-void tc_stdin_callback(int fd, fd_set* active_fd_set, struct SockCont cont) {
-  char buffer[1000];
-  memset(buffer, '\0', sizeof(buffer));
-  read(STDIN_FILENO, buffer, sizeof(buffer));
-  sanitize_buffer(buffer);
+void tc_stdin_callback(int fd, fd_set* active_fd_set, struct SockCont cont, FileDB* db) {
+
+  char buffer[MAXMSG];
+  read_from_stdin(buffer, MAXMSG*sizeof(char));
+  /*memset(buffer, '\0', sizeof(buffer));
+  read(STDIN_FILENO, buffer, MAXMSG);
+  buffer[strlen(buffer)-1] = '\0'; // to remove \n */
+  
+  printf("[tc][debug] here1\n");
+  
+  //sanitize_buffer(buffer);
   if(strlen(buffer) == 0)
     return;
+
   char command[1000];
   extract_command(buffer, command);
+  
   if(strcmp(command, "register") == 0) {
     char filename[1000];
+    char path[1000];
     extract_filename(buffer, filename);
+    extract_path(buffer, path);
+    add_to_db(db, path, filename);
     printf("registering: %s\n", filename);
-    write_msg(cont.server_fd, filename);
+    write_msg(cont.server_fd, buffer);
   } else {
     printf("command not found!\n");
   }
 }
 
 void tc_listener_callback(int fd, fd_set* active_fd_set, struct SockCont cont) {
-  sample_req_callback(fd, active_fd_set);
+  char ip[MAXMSG];
+  sample_req_callback(fd, active_fd_set,ip);
 }
 
 void tc_server_callback(int fd, fd_set* active_fd_set, struct SockCont cont) {
@@ -40,8 +52,12 @@ void tc_event_callback(int fd, fd_set* active_fd_set, struct SockCont cont) {
 
   printf("[tc] trigged fd: %d\n", fd);
   printf("[tc] stdin_fd: %d\n", cont.stdin_fd);
+
+  static FileDB db;
+  init_tc_db(&db);
+  
   if(fd == cont.stdin_fd)
-    tc_stdin_callback(fd, active_fd_set,cont);
+    tc_stdin_callback(fd, active_fd_set,cont,&db);
   else if(fd == cont.server_fd)
     tc_server_callback(fd, active_fd_set,cont);
   else if(fd == cont.listener_fd)
@@ -93,7 +109,6 @@ void clear_db(FileDB* db) {
 }
 
 void get_entry_path(FileDB* db, char* name, char* path) {
-  memset(path,0,sizeof(path));
   for(int i = 0; i < db->num_of_entries; i++)
     if(strcmp(db->entries[i]->name,name) == 0) {
       strcpy(path, db->entries[i]->path);
