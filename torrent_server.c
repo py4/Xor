@@ -182,6 +182,27 @@ void ts_register_file(int fd, char* buffer, TorrentDB* db) {
   add_entry(db, name, fd);
   printf("[ts] now entry count: %d\n", db->num_of_entries);
 }
+
+void ts_lookup_file(int fd, char* buffer, TorrentDB* db) {
+  char name[100];
+  extract_filename(buffer, name);
+  printf("[ts] looking for: %s\n", name);
+  ConnectedClient* client = get_a_seeder(db, name);
+  if(client == 0) {
+    printf("[ts] lookup failed\n");
+    write_msg(fd, "0 0 0");
+  } else {
+    printf("[ts] found: %s - %d\n", client->ip, client->port);
+    char msg[1000];
+    char port[1000];
+    int_to_char(client->port, port);
+    strcat(msg, "1 ");
+    strcat(msg, client->ip);
+    strcat(msg, " ");
+    strcat(msg, port);
+    write_msg(fd, msg);
+  }
+}
 void ts_client_callback(int fd, fd_set* active_fd_set, TorrentDB* db) {
   char buffer[MAXMSG];
   int read_status = sample_read_callback(fd, active_fd_set, buffer);
@@ -199,7 +220,9 @@ void ts_client_callback(int fd, fd_set* active_fd_set, TorrentDB* db) {
   printf("[ts] command:  %s\n", command);
   if(strcmp(command,"register") == 0)
     ts_register_file(fd, buffer, db);
-  else {
+  else if(strcmp(command, "lookup") == 0){
+    ts_lookup_file(fd, buffer, db);
+  } else {
     printf("[ts] command not found \n");
   }
 }

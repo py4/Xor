@@ -7,4 +7,5 @@ void extract_path(char*, char*);
 void sanitize_buffer(char*);
 void int_to_char(int, char*);
 void init_string(char*, int);
+void parse_lookup_output(char*, int*, char*, int *);
 #endif

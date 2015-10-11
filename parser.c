@@ -44,3 +44,7 @@ void int_to_char(int num, char* buf) {
 void init_string(char* arr, int size) {
   memset(arr, '\0', size*sizeof(char));
 }
+
+void parse_lookup_output(char* buffer, int* success, char* ip, int *port) {
+  sscanf(buffer, "%d %s %d", success, ip, port);
+}

@@ -13,17 +13,23 @@ void tc_disconnect(int server_fd) {
   exit(EXIT_SUCCESS);
 }
 
+void tc_lookup(int server_fd, fd_set* active_fd_set, char* buffer) {
+  write_msg(server_fd, buffer);
+  char response[MAXMSG];
+  sample_read_callback(server_fd, active_fd_set, response);
+  printf("[tc] response: %s\n", response);
+  int success;
+  char ip[MAXMSG];
+  int port;
+  parse_lookup_output(response, &success, ip, &port);
+  printf("success: %d - ip: %s - port: %d\n", success, ip, port);
+}
+
 void tc_stdin_callback(int fd, fd_set* active_fd_set, struct SockCont cont, FileDB* db) {
 
   char buffer[MAXMSG];
   read_from_stdin(buffer, MAXMSG*sizeof(char));
-  /*memset(buffer, '\0', sizeof(buffer));
-  read(STDIN_FILENO, buffer, MAXMSG);
-  buffer[strlen(buffer)-1] = '\0'; // to remove \n */
   
-  printf("[tc][debug] here1\n");
-  
-  //sanitize_buffer(buffer);
   if(strlen(buffer) == 0)
     return;
 
@@ -42,7 +48,9 @@ void tc_stdin_callback(int fd, fd_set* active_fd_set, struct SockCont cont, File
     dump_tc_db(db);
   } else if(strcmp(command, "disconnect") == 0) {
     tc_disconnect(cont.server_fd);
-  }else {
+  } else if(strcmp(command, "lookup") == 0) {
+    tc_lookup(cont.server_fd, active_fd_set, buffer);
+  } else {
     printf("command not found!\n");
   }
 }
