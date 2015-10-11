@@ -186,7 +186,9 @@ void ts_client_callback(int fd, fd_set* active_fd_set, TorrentDB* db) {
   char buffer[MAXMSG];
   int read_status = sample_read_callback(fd, active_fd_set, buffer);
   if(read_status < 0) {
-    printf("[ts] error in read \n");
+    printf("[ts] disconnecting client with fd %d\n", fd);
+    remove_client(db,fd);
+    close(fd);
     return;
   } else {
     printf("[ts] >>>>>>> read: %s\n", buffer);

@@ -7,6 +7,12 @@ void dump_tc_db(FileDB* db) {
     printf("%s : %s\n", db->entries[i]->name, db->entries[i]->path);
   printf("==================================\n");
 }
+
+void tc_disconnect(int server_fd) {
+  close(server_fd);
+  exit(EXIT_SUCCESS);
+}
+
 void tc_stdin_callback(int fd, fd_set* active_fd_set, struct SockCont cont, FileDB* db) {
 
   char buffer[MAXMSG];
@@ -34,6 +40,8 @@ void tc_stdin_callback(int fd, fd_set* active_fd_set, struct SockCont cont, File
     write_msg(cont.server_fd, buffer);
   } else if(strcmp(command, "debug") == 0) {
     dump_tc_db(db);
+  } else if(strcmp(command, "disconnect") == 0) {
+    tc_disconnect(cont.server_fd);
   }else {
     printf("command not found!\n");
   }
@@ -85,9 +93,23 @@ void send_lport_to_ts(int fd, int port) {
   write_msg(fd, buffer);
 }
 
-void start_tc(int my_port, char* server_ip, int server_port) {
-  int listener_fd = create_socket(my_port);
+void start_tc(char* server_ip, int server_port) {
+
+  //int listener_fd = create_socket(my_port);
+  int my_port;
+  int listener_fd = create_socket(0);
   listen_on(listener_fd,10);
+  struct sockaddr_in sin;
+  int addrlen = sizeof(sin);
+  if(getsockname(listener_fd, (struct sockaddr *)&sin, &addrlen) ==0 && sin.sin_family == AF_INET &&
+     addrlen == sizeof(sin)) {
+    my_port = ntohs(sin.sin_port);
+  } else{
+    perror("listen");
+    return;
+  }
+
+  printf("[tc] listening to: %d\n", my_port);
   int server_fd = create_connector_socket(server_ip, server_port);
   send_lport_to_ts(server_fd, my_port);
   
