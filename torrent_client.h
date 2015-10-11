@@ -13,6 +13,7 @@ typedef struct Entry {
 typedef struct FileDB {
   Entry* entries[MAX_ENTRIES];
   int num_of_entries;
+  int init;
 } FileDB;
 
 
@@ -30,7 +31,7 @@ void init_tc_db(FileDB*);
 void add_to_db(FileDB*,char*,char*);
 void clear_db(FileDB*);
 void get_entry_path(FileDB*,char*,char*);
-
+void dump_tc_db(FileDB*);
 
 
 

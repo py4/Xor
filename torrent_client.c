@@ -1,6 +1,12 @@
 #include "torrent_client.h"
 #include "parser.h"
 
+void dump_tc_db(FileDB* db) {
+  printf("==================================\n");
+  for(int i = 0; i < db->num_of_entries; i++)
+    printf("%s : %s\n", db->entries[i]->name, db->entries[i]->path);
+  printf("==================================\n");
+}
 void tc_stdin_callback(int fd, fd_set* active_fd_set, struct SockCont cont, FileDB* db) {
 
   char buffer[MAXMSG];
@@ -26,7 +32,9 @@ void tc_stdin_callback(int fd, fd_set* active_fd_set, struct SockCont cont, File
     add_to_db(db, path, filename);
     printf("registering: %s\n", filename);
     write_msg(cont.server_fd, buffer);
-  } else {
+  } else if(strcmp(command, "debug") == 0) {
+    dump_tc_db(db);
+  }else {
     printf("command not found!\n");
   }
 }
@@ -53,8 +61,11 @@ void tc_event_callback(int fd, fd_set* active_fd_set, struct SockCont cont) {
   printf("[tc] trigged fd: %d\n", fd);
   printf("[tc] stdin_fd: %d\n", cont.stdin_fd);
 
-  static FileDB db;
-  init_tc_db(&db);
+  static FileDB db = {{},0,0};
+  if(db.init == 0) {
+    init_tc_db(&db);
+    db.init = 1;
+  }
   
   if(fd == cont.stdin_fd)
     tc_stdin_callback(fd, active_fd_set,cont,&db);
