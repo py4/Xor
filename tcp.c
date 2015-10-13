@@ -53,6 +53,7 @@ int read_from_socket(int fd, char* buffer) {
     perror("read");
     exit(EXIT_FAILURE);
   } else if(nbytes == 0) {
+    printf("[tcp] read 0 bytes \n");
     return -1;
   } else {
     buffer[nbytes] = '\0';
@@ -90,12 +91,12 @@ int sample_read_callback(int fd, fd_set* active_fd_set, char* buffer) {
   //memset(buffer,0,sizeof(buffer));
   
   if(read_from_socket(fd, buffer) < 0) {
-    printf("FUCK!\n");
     close(fd);
     FD_CLR(fd, active_fd_set);
     return -1;
   }
   sanitize_buffer(buffer);
+  printf("[debug] buffer: %s\n", buffer);
   return 0;
   //else
     //fprintf(stderr, "Server: got message: %s\n", buffer);

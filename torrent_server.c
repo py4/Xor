@@ -1,4 +1,7 @@
 #include "torrent_server.h"
+//TODO: seprating db handler from torrent server
+//TODO: adding proper functions to header files
+
 
 void dump_db(TorrentDB* db) {
   printf("==========================================\n");
@@ -194,12 +197,14 @@ void ts_lookup_file(int fd, char* buffer, TorrentDB* db) {
   } else {
     printf("[ts] found: %s - %d\n", client->ip, client->port);
     char msg[1000];
+    memset(msg, '\0', sizeof(msg));
     char port[1000];
     int_to_char(client->port, port);
     strcat(msg, "1 ");
     strcat(msg, client->ip);
     strcat(msg, " ");
     strcat(msg, port);
+    printf("[ts][debug] aim to write this msg: %s\n", msg);
     write_msg(fd, msg);
   }
 }

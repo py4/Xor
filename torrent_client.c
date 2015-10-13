@@ -14,6 +14,9 @@ void tc_disconnect(int server_fd) {
 }
 
 void tc_lookup(int server_fd, fd_set* active_fd_set, char* buffer) {
+  char filename[1000];
+  extract_filename(buffer, filename);
+    
   write_msg(server_fd, buffer);
   char response[MAXMSG];
   sample_read_callback(server_fd, active_fd_set, response);
@@ -23,6 +26,40 @@ void tc_lookup(int server_fd, fd_set* active_fd_set, char* buffer) {
   int port;
   parse_lookup_output(response, &success, ip, &port);
   printf("success: %d - ip: %s - port: %d\n", success, ip, port);
+  if(success == 1) {
+    int host_fd = create_connector_socket(ip,port);
+    write_msg(host_fd, filename);
+
+    /* begin downloading file */
+    char path[100];
+    memset(path, 0, sizeof(path));
+    strcat(path, "downloads/");
+    strcat(path, filename);
+    int file_fd = open(path, O_CREAT | O_WRONLY,S_IRUSR | S_IWUSR);
+    if(file_fd == -1)
+      perror("writing to file");
+    else {
+      int byte_read = 1;
+      char buffer[2];
+      while(byte_read  > 0) {
+	byte_read = read(host_fd, buffer, sizeof(buffer));
+	if(byte_read == 0)
+	  break;
+	printf("bytes read from server: %d\n", byte_read);
+	int byte_wrote = write(file_fd, buffer, byte_read);
+	printf("bytes written: %d\n", byte_wrote);
+	if(byte_wrote < 0)
+	  perror("failed to write bytes");
+      }
+      close(file_fd);
+      close(host_fd);
+    }
+      
+    /* end */
+    
+  } else {
+    printf("file not found!\n");
+  }
 }
 
 void tc_stdin_callback(int fd, fd_set* active_fd_set, struct SockCont cont, FileDB* db) {
@@ -55,9 +92,45 @@ void tc_stdin_callback(int fd, fd_set* active_fd_set, struct SockCont cont, File
   }
 }
 
-void tc_listener_callback(int fd, fd_set* active_fd_set, struct SockCont cont) {
+void tc_listener_callback(int fd, fd_set* active_fd_set, struct SockCont cont, FileDB* db) {
   char ip[MAXMSG];
-  sample_req_callback(fd, active_fd_set,ip);
+  int new_socket = sample_req_callback(fd, active_fd_set,ip);
+  printf("[tc][debug] requested accepted. waiting for message\n");
+  char buffer[MAXMSG];
+  if(sample_read_callback(new_socket, active_fd_set, buffer) == 0) {
+    char path[MAXMSG];
+    memset(path,0,sizeof(path));
+    get_entry_path(db,buffer, path);
+    printf("found path: %s\n", path);
+
+    /* begin sending file */
+    int file_fd = open(path, O_RDONLY);
+    if(file_fd == -1) {
+      perror("opening file");
+      return;
+    }
+    int byte_read = 1;
+    char buffer[2];
+    while(byte_read > 0) {
+      byte_read = read(file_fd, buffer, sizeof(buffer));
+      if(byte_read == 0)
+	break;
+      printf("[from file] bytes read %d\n", byte_read);
+      int byte_sent = write(new_socket, buffer, byte_read);
+      
+        printf(" bytes written to requesters %d\n", byte_sent);
+
+        if(byte_sent < 0)
+            perror("Failed to send bytes");
+    }
+    /* end */
+    close(file_fd);
+    close(new_socket);
+    FD_CLR(new_socket, active_fd_set);
+    
+  } else {
+    printf("[tc][debug] CRAP!!!\n");
+  }
 }
 
 void tc_server_callback(int fd, fd_set* active_fd_set, struct SockCont cont) {
@@ -68,8 +141,8 @@ void tc_server_callback(int fd, fd_set* active_fd_set, struct SockCont cont) {
 
 void tc_client_callback(int fd, fd_set* active_fd_set, struct SockCont cont) {
   char buffer[MAXMSG];
-  sample_read_callback(fd, active_fd_set, buffer);
-  printf("[tc] another client told me: %s\n", buffer);
+  if(sample_read_callback(fd, active_fd_set, buffer) > 0)
+    printf("[tc] client[%d] told me: %s\n", fd, buffer);
 }
 
 void tc_event_callback(int fd, fd_set* active_fd_set, struct SockCont cont) {
@@ -88,7 +161,7 @@ void tc_event_callback(int fd, fd_set* active_fd_set, struct SockCont cont) {
   else if(fd == cont.server_fd)
     tc_server_callback(fd, active_fd_set,cont);
   else if(fd == cont.listener_fd)
-    tc_listener_callback(fd, active_fd_set,cont);
+    tc_listener_callback(fd, active_fd_set,cont,&db);
   else{
     printf("a client has sent sth!\n");
     tc_client_callback(fd, active_fd_set,cont);
