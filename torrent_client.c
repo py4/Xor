@@ -1,9 +1,11 @@
 #include "torrent_client.h"
 #include "parser.h"
+#include <sys/stat.h>
 
 void dump_tc_db(FileDB* db) {
+	int i;
   printf("==================================\n");
-  for(int i = 0; i < db->num_of_entries; i++)
+  for(i = 0; i < db->num_of_entries; i++)
     printf("%s : %s\n", db->entries[i]->name, db->entries[i]->path);
   printf("==================================\n");
 }
@@ -40,7 +42,7 @@ void tc_lookup(int server_fd, fd_set* active_fd_set, char* buffer) {
       perror("writing to file");
     else {
       int byte_read = 1;
-      char buffer[2];
+      char buffer[512];
       while(byte_read  > 0) {
 	byte_read = read(host_fd, buffer, sizeof(buffer));
 	if(byte_read == 0)
@@ -110,7 +112,7 @@ void tc_listener_callback(int fd, fd_set* active_fd_set, struct SockCont cont, F
       return;
     }
     int byte_read = 1;
-    char buffer[2];
+    char buffer[512];
     while(byte_read > 0) {
       byte_read = read(file_fd, buffer, sizeof(buffer));
       if(byte_read == 0)
@@ -176,7 +178,6 @@ void send_lport_to_ts(int fd, int port) {
 
 void start_tc(char* server_ip, int server_port) {
 
-  //int listener_fd = create_socket(my_port);
   int my_port;
   int listener_fd = create_socket(0);
   listen_on(listener_fd,10);
@@ -218,12 +219,14 @@ void add_to_db(FileDB* db, char* path, char* name) {
 }
 
 void clear_db(FileDB* db) {
-  for(int i = 0; i < db->num_of_entries; i++)
+	int i;
+  for(i = 0; i < db->num_of_entries; i++)
     free(db->entries[i]);
 }
 
 void get_entry_path(FileDB* db, char* name, char* path) {
-  for(int i = 0; i < db->num_of_entries; i++)
+	int i;
+  for(i = 0; i < db->num_of_entries; i++)
     if(strcmp(db->entries[i]->name,name) == 0) {
       strcpy(path, db->entries[i]->path);
       return;

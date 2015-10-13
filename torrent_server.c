@@ -1,13 +1,14 @@
 #include "torrent_server.h"
-//TODO: seprating db handler from torrent server
-//TODO: adding proper functions to header files
+/*TODO: seprating db handler from torrent server */
+/*TODO: adding proper functions to header files */
 
 
 void dump_db(TorrentDB* db) {
+	int i,j;
   printf("==========================================\n");
-  for(int i = 0; i < db->num_of_connected; i++) {
+  for(i = 0; i < db->num_of_connected; i++) {
     printf("user with fd %d \n", db->connected_clients[i]->fd);
-    for(int j = 0; j < db->connected_clients[i]->num_of_files; j++)
+    for(j = 0; j < db->connected_clients[i]->num_of_files; j++)
       printf("name: %s\n", db->connected_clients[i]->owned_files[j]->name);
     printf("-----------------------\n");
   }
@@ -41,7 +42,8 @@ void init_file_entry(FileEntry* entry, char* name, ConnectedClient* client) {
 
 
 ConnectedClient* find_connected_client(TorrentDB* db, int fd) {
-  for(int i = 0; i < MAX_CONNECTED; i++) {
+	int i;
+  for(i = 0; i < MAX_CONNECTED; i++) {
     if(db->connected_clients[i] == 0)
       return 0;
     if(db->connected_clients[i]->fd == fd)
@@ -51,7 +53,8 @@ ConnectedClient* find_connected_client(TorrentDB* db, int fd) {
 }
 
 FileEntry* find_file_entry(TorrentDB* db, char* name) {
-  for(int i = 0; i < MAX_FILES; i++) {
+	int i;
+  for(i = 0; i < MAX_FILES; i++) {
     if(db->file_entries[i] == 0)
       return 0;
     if(strcmp(db->file_entries[i]->name,name) == 0)
@@ -86,9 +89,11 @@ void add_entry(TorrentDB* db, char* name, int fd) {
 }
 
 void remove_client_from_entry(FileEntry* entry, ConnectedClient* client) {
-  for(int i = 0; i < entry->num_of_owners; i++) {
+  int i,j;
+	for(i = 0; i < entry->num_of_owners; i++) {
     if(entry->owners[i] == client) {
-      for(int j = i; j < entry->num_of_owners - 1; j++)
+			int j;
+      for(j = i; j < entry->num_of_owners - 1; j++)
 	entry->owners[j] = entry->owners[j+1];
       entry->owners[entry->num_of_owners - 1] = 0;
       entry->num_of_owners--;
@@ -99,11 +104,12 @@ void remove_client_from_entry(FileEntry* entry, ConnectedClient* client) {
   }
 }
 
-// no client is left for this file
+/* no client is left for this file */
 void remove_entry_from_db(TorrentDB* db, FileEntry* entry) {
-  for(int i = 0; i < db->num_of_entries; i++)
+	int i,j;
+  for(i = 0; i < db->num_of_entries; i++)
     if(db->file_entries[i] == entry) {
-      for(int j = i; j < db->num_of_entries - 1; j++)
+      for(j = i; j < db->num_of_entries - 1; j++)
 	db->file_entries[j] = db->file_entries[j+1];
       db->file_entries[db->num_of_entries-1] = 0;
       db->num_of_entries--;
@@ -112,23 +118,24 @@ void remove_entry_from_db(TorrentDB* db, FileEntry* entry) {
     }
 }
 
-// in case of disconnecting
+/* in case of disconnecting */
 void remove_client(TorrentDB* db, int fd) {
+	int i,j;
   ConnectedClient* client = find_connected_client(db,fd);
   if(client == 0)
     return;
 
-  //removing from entries
-  for(int i = 0; i < client->num_of_files; i++) {
+  /* removing from entries */
+  for(i = 0; i < client->num_of_files; i++) {
     remove_client_from_entry(client->owned_files[i], client);
     if(client->owned_files[i]->num_of_owners == 0)
       remove_entry_from_db(db, client->owned_files[i]);
   }
 
-  //removing form db
-  for(int i = 0; i < db->num_of_connected; i++)
+  /* removing form db */
+  for(i = 0; i < db->num_of_connected; i++)
     if(db->connected_clients[i] == client) {
-      for(int j = i; j < db->num_of_connected - 1; j++)
+      for(j = i; j < db->num_of_connected - 1; j++)
 	db->connected_clients[j] = db->connected_clients[j+1];
       db->connected_clients[db->num_of_connected-1] = 0;
 
@@ -162,7 +169,7 @@ int read_client_port(int fd, fd_set* active_fd_set) {
     return -1;
 }
 
-//TODO: droping client with bad port
+/* TODO: droping client with bad port */
 void ts_listener_callback(int fd, fd_set* active_fd_set, TorrentDB* db) {
   char ip[MAXMSG];
   int new_socket = sample_req_callback(fd, active_fd_set, ip);
@@ -180,6 +187,7 @@ void ts_listener_callback(int fd, fd_set* active_fd_set, TorrentDB* db) {
 
 void ts_register_file(int fd, char* buffer, TorrentDB* db) {
   char name[100];
+  printf("[debug] buffer: %s\n");
   extract_filename(buffer, name);
   printf("[ts] registering: %s\n", name);
   add_entry(db, name, fd);
@@ -263,7 +271,7 @@ void ts_event_callback(int fd, fd_set* active_fd_set, struct SockCont cont) {
   }
 }
 
-//TODO: adding exit flag to monitor
+/* TODO: adding exit flag to monitor */
 void start_ts(int port) {
   int listener_fd = create_socket(port);
   listen_on(listener_fd,10);

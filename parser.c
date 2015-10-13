@@ -14,7 +14,8 @@ void extract_command(char* buffer, char* command) {
 }
 
 void reverse(char* buffer) {
-  for(int i = 0; i < strlen(buffer) / 2; i++) {
+	int i;
+  for(i = 0; i < strlen(buffer) / 2; i++) {
     char tmp = buffer[i];
     buffer[i] = buffer[strlen(buffer) - 1 - i];
     buffer[strlen(buffer) - 1 - i] = tmp;
@@ -22,7 +23,8 @@ void reverse(char* buffer) {
 }
 
 void extract_path(char* buffer, char* path) {
-  for(int i = strlen(buffer) - 1; i >= 0 && buffer[i] != ' '; i--)
+	int i;
+  for(i = strlen(buffer) - 1; i >= 0 && buffer[i] != ' '; i--)
     path[strlen(buffer) - 1 - i] = buffer[i];
   path[strlen(buffer)] = '\0';
   reverse(path);
@@ -30,14 +32,17 @@ void extract_path(char* buffer, char* path) {
 
 void extract_filename(char* buffer, char* file_name) {
   int i;
-  for(i = strlen(buffer) - 1; i >= 0 && buffer[i] != '/' && buffer[i] != ' '; i--)
+  //printf("[debug] strlen: %d\n", strlen(buffer));
+  for(i = strlen(buffer) - 1; i >= 0 && buffer[i] != '/' && buffer[i] != ' '; i--) {
     file_name[strlen(buffer) - 1 - i] = buffer[i];
+    //printf("saving %c at %d\n", buffer[i], strlen(buffer) - 1);
+  }
   file_name[strlen(buffer) - 1 - i] = '\0';
+  //  printf("[debug] before: %s\n", file_name);
   reverse(file_name);
 }
 
 void int_to_char(int num, char* buf) {
-  //memset(buf, '\0', sizeof(buf));
   sprintf(buf,"%d", num);
 }
 

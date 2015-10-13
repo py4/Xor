@@ -41,13 +41,8 @@ int create_socket(int port) {
 }
 
 int read_from_socket(int fd, char* buffer) {
-  //memset(buffer,0,buffer_size * sizeof(char));
   int nbytes;
 
-  /*  int fuck;
-  ioctl(fd, FIONREAD, &fuck);
-  printf("$$$$ fuck ready: %d\n", fuck); */
-  
   nbytes = read(fd,buffer,MAXMSG);
   if(nbytes < 0) {
     perror("read");
@@ -57,7 +52,6 @@ int read_from_socket(int fd, char* buffer) {
     return -1;
   } else {
     buffer[nbytes] = '\0';
-    //fprintf(stderr, "Server: got message: %s\n", buffer);
     return 0;
   }
 }
@@ -81,15 +75,11 @@ int sample_req_callback(int fd, fd_set* active_fd_set, char* ip) {
   int port = client_sockaddr.sin_port;
 
   fprintf(stderr, "[ts] new connection: %s : %d \n", ip, port);
-  //  fprintf(stderr, "Server: connect from host %s, port %hd. \n", inet_ntoa(client_sockaddr.sin_addr), ntohs(client_sockaddr.sin_port));
   FD_SET(new_socket, active_fd_set);
   return new_socket;
 }
 
 int sample_read_callback(int fd, fd_set* active_fd_set, char* buffer) {
-  //char buffer[MAXMSG];
-  //memset(buffer,0,sizeof(buffer));
-  
   if(read_from_socket(fd, buffer) < 0) {
     close(fd);
     FD_CLR(fd, active_fd_set);
@@ -98,16 +88,7 @@ int sample_read_callback(int fd, fd_set* active_fd_set, char* buffer) {
   sanitize_buffer(buffer);
   printf("[debug] buffer: %s\n", buffer);
   return 0;
-  //else
-    //fprintf(stderr, "Server: got message: %s\n", buffer);
-  //memset(buffer,0,sizeof(buffer));
 }
-
-/*void read_from_stdin() {
-  char buffer[1000];
-  read(STDIN_FILENO, buffer, sizeof(1000));
-  printf("stdin:  %s\n",buffer);
-  }*/
 
 void read_from_stdin(char* buffer, int size) {
   memset(buffer, '\0', size);
@@ -133,7 +114,8 @@ void monitor(struct SockCont container, callback events_callback) {
   int stdin_fd = container.stdin_fd;
   int server_fd = container.server_fd;
   int listener_fd = container.listener_fd;
-  
+	int i;
+
   FD_ZERO(&active_fd_set);
   if(stdin_fd != -1)
     FD_SET(stdin_fd, &active_fd_set);
@@ -149,7 +131,7 @@ void monitor(struct SockCont container, callback events_callback) {
       perror("select");
       exit(EXIT_FAILURE);
     }
-    for(int i = 0; i < FD_SETSIZE; i++) {
+    for(i = 0; i < FD_SETSIZE; i++) {
       if(FD_ISSET(i, &read_fd_set))
 	events_callback(i, &active_fd_set, container);
     }
