@@ -16,7 +16,12 @@
 #include <sys/select.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <errno.h>
+
 #define MAXMSG 512
+#define MAXFN 512
+#define BUFSIZE 512
+#define MAX_NAME_SIZE 512
 
 typedef struct SockCont {
   int stdin_fd;
@@ -39,5 +44,8 @@ void monitor(struct SockCont, callback);
 int create_connector_socket(char*,int);
 void read_from_stdin();
 void write_msg(int, char*);
-
+void disconnect(int,int,int);
+void download_data(int, char*);
+void send_data(int, char*);
+void write_int(int,int);
 #endif
