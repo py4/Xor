@@ -4,6 +4,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <errno.h>
+
 
 void extract_command(char*, char*);
 void extract_filename(char*, char*);

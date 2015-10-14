@@ -17,6 +17,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <errno.h>
+#include <sys/stat.h> 
 
 #define MAXMSG 512
 #define MAXFN 512

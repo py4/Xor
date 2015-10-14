@@ -18,8 +18,6 @@ void ts_listener_callback(int fd, fd_set* active_fd_set, TorrentDB* db) {
     int port = read_client_port(new_socket, active_fd_set);
     add_client(db, ip, port, new_socket);
     char tmsg[1000];
-    memset(result,0,sizeof(tmsg))
-    snprintf(result, 1000,
     csnprintf("New connection: %s : %d - fd: %d \n", ip, port, new_socket);
     csnprintf("Num of connections: %d\n", db->num_of_connected);
   } else

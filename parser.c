@@ -70,8 +70,8 @@ void parse_lookup_output(char* buffer, int* success, char* ip, int *port) {
 
 
 void csnprintf(const char* format, ...) {
-  int count = 0;
-  for(int i = 0; i < strlen(format); i++)
+  int count = 0,i;
+  for(i = 0; i < strlen(format); i++)
     if(format[i] == '%')
       count++;
   

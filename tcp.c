@@ -183,7 +183,7 @@ void download_data(int fd, char* path) {
       byte_read = read(fd, buffer, sizeof(buffer));
       if(byte_read == 0)
 	break;
-      cprintf("[log] bytes read from server: %d\n", byte_read);
+      csnprintf("[log] bytes read from server: %d\n", byte_read);
       int byte_wrote = write(file_fd, buffer, byte_read);
       csnprintf("[log] bytes written: %d\n", byte_wrote);
       if(byte_wrote < 0)
